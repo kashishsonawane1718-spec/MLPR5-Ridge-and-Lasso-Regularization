@@ -1,0 +1,286 @@
+
+# ==========================================================
+# Practical 5: Classification using Ridge and Lasso
+# Dataset: Heart Disease UCI Dataset
+# ==========================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report
+)
+
+# ----------------------------------------------------------
+# Step 1: Load Dataset
+# ----------------------------------------------------------
+
+plt.style.use("ggplot")
+
+df = pd.read_csv("heart.csv")
+
+print("First 5 Rows:")
+print(df.head())
+
+print("\nDataset Shape:")
+print(df.shape)
+
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+print("\nDataset Information:")
+df.info()
+
+print("\nStatistical Description:")
+print(df.describe())
+
+# ----------------------------------------------------------
+# Step 2: Preprocessing
+# ----------------------------------------------------------
+
+# Remove rows where target is missing
+df = df.dropna(subset=["target"]).copy()
+
+# Target is already binary:
+# 0 = No Disease
+# 1 = Disease
+
+# Keep numerical columns
+df = df.select_dtypes(include=np.number)
+
+# ----------------------------------------------------------
+# Step 3: Features and Target
+# ----------------------------------------------------------
+
+X = df.drop("target", axis=1)
+y = df["target"].astype(int)
+
+feature_names = X.columns
+
+print("\nFeature Names:")
+print(list(feature_names))
+
+# ----------------------------------------------------------
+# Step 4: Handle Missing Values
+# ----------------------------------------------------------
+
+imputer = SimpleImputer(strategy="mean")
+
+X = pd.DataFrame(
+    imputer.fit_transform(X),
+    columns=feature_names
+)
+
+print("\nShape After Preprocessing:")
+print(X.shape)
+
+# ----------------------------------------------------------
+# Step 5: Correlation Heatmap
+# ----------------------------------------------------------
+
+plt.figure(figsize=(10, 8))
+
+sns.heatmap(
+    df.corr(),
+    cmap="coolwarm",
+    annot=True,
+    fmt=".2f"
+)
+
+plt.title("Correlation Heatmap")
+plt.tight_layout()
+plt.show()
+
+# ----------------------------------------------------------
+# Step 6: Train-Test Split
+# ----------------------------------------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+# ----------------------------------------------------------
+# Step 7: Standardization
+# ----------------------------------------------------------
+
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+print("\nTraining Samples:", X_train.shape[0])
+print("Testing Samples:", X_test.shape[0])
+
+# ----------------------------------------------------------
+# Step 8: Train Ridge Model (L2 Regularization)
+# ----------------------------------------------------------
+
+ridge = LogisticRegression(
+    penalty="l2",
+    solver="liblinear",
+    C=0.1,
+    random_state=42,
+    max_iter=1000
+)
+
+ridge.fit(X_train, y_train)
+
+ridge_pred = ridge.predict(X_test)
+
+ridge_accuracy = accuracy_score(
+    y_test,
+    ridge_pred
+)
+
+print("\nRidge Accuracy:", round(ridge_accuracy, 4))
+
+# ----------------------------------------------------------
+# Step 9: Train Lasso Model (L1 Regularization)
+# ----------------------------------------------------------
+
+lasso = LogisticRegression(
+    penalty="l1",
+    solver="liblinear",
+    C=0.05,
+    random_state=42,
+    max_iter=1000
+)
+
+lasso.fit(X_train, y_train)
+
+lasso_pred = lasso.predict(X_test)
+
+lasso_accuracy = accuracy_score(
+    y_test,
+    lasso_pred
+)
+
+print("Lasso Accuracy:", round(lasso_accuracy, 4))
+
+# ----------------------------------------------------------
+# Step 10: Compare Accuracy
+# ----------------------------------------------------------
+
+results = pd.DataFrame({
+    "Model": ["Ridge", "Lasso"],
+    "Accuracy": [
+        ridge_accuracy,
+        lasso_accuracy
+    ]
+})
+
+print("\nModel Accuracy Comparison:")
+print(results)
+
+# ----------------------------------------------------------
+# Step 11: Accuracy Bar Chart
+# ----------------------------------------------------------
+
+plt.figure(figsize=(6, 4))
+
+plt.bar(
+    results["Model"],
+    results["Accuracy"]
+)
+
+plt.title("Ridge vs Lasso Accuracy")
+plt.xlabel("Models")
+plt.ylabel("Accuracy")
+plt.ylim(0, 1)
+
+plt.show()
+
+# ----------------------------------------------------------
+# Step 12: Ridge Confusion Matrix
+# ----------------------------------------------------------
+
+print("\nRidge Confusion Matrix:")
+
+print(confusion_matrix(y_test, ridge_pred))
+
+print("\nRidge Classification Report:")
+
+print(
+    classification_report(
+        y_test,
+        ridge_pred
+    )
+)
+
+# ----------------------------------------------------------
+# Step 13: Lasso Confusion Matrix
+# ----------------------------------------------------------
+
+print("\nLasso Confusion Matrix:")
+
+print(confusion_matrix(y_test, lasso_pred))
+
+print("\nLasso Classification Report:")
+
+print(
+    classification_report(
+        y_test,
+        lasso_pred
+    )
+)
+
+# ----------------------------------------------------------
+# Step 14: Coefficient Comparison
+# ----------------------------------------------------------
+
+coef = pd.DataFrame({
+    "Feature": feature_names,
+    "Ridge": ridge.coef_[0],
+    "Lasso": lasso.coef_[0]
+})
+
+print("\nFeature Coefficients:")
+
+print(coef.round(3))
+
+# ----------------------------------------------------------
+# Step 15: Coefficient Bar Chart
+# ----------------------------------------------------------
+
+coef.set_index("Feature").plot(
+    kind="bar",
+    figsize=(12, 6)
+)
+
+plt.title("Feature Coefficients: Ridge vs Lasso")
+plt.ylabel("Coefficient Value")
+plt.xlabel("Features")
+plt.grid(axis="y")
+
+plt.xticks(rotation=45)
+plt.tight_layout()
+
+plt.show()
+
+# ----------------------------------------------------------
+# Step 16: Count Selected Features
+# ----------------------------------------------------------
+
+ridge_features = np.sum(ridge.coef_[0] != 0)
+
+lasso_features = np.sum(lasso.coef_[0] != 0)
+
+print("\nNumber of Features Used:")
+
+print("Ridge:", ridge_features)
+print("Lasso:", lasso_features)
+
+print("\nPractical 5 Completed Successfully!")
